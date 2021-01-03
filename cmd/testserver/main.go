@@ -6,12 +6,17 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os/signal"
+	"syscall"
 	/* Adding this http endpoint to download live profiles */
 	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"runtime/pprof"
 )
+
+// WORD OF WARNING: DO NOT USE IN PROD!
+// This is expeirmental and error-handling is terrbile below.
 
 type helloHandler struct {
 }
@@ -45,34 +50,54 @@ func main() {
 	}
 
 	// Below added to enable cpu profiling
+	var cpuFile *os.File
 	if *cpuprofile != "" {
-		f, err := os.Create(*cpuprofile)
+		cpuFile, err := os.Create(*cpuprofile)
 		if err != nil {
 			log.Fatal("could not create CPU profile: ", err)
 		}
-		defer f.Close() // error handling omitted for example
-		if err := pprof.StartCPUProfile(f); err != nil {
+		// Can increase the frequency of profiling as needed
+		runtime.SetCPUProfileRate(500)
+		if err := pprof.StartCPUProfile(cpuFile); err != nil {
 			log.Fatal("could not start CPU profile: ", err)
 		}
-		defer pprof.StopCPUProfile()
+	}
+
+	// Below added to enable memory profiling
+	var memFile *os.File
+	if *memprofile != "" {
+		memFile, err := os.Create(*memprofile)
+		if err != nil {
+			log.Fatal("could not create memory profile: ", err)
+		}
+		runtime.GC() // get up-to-date statistics
+		if err := pprof.WriteHeapProfile(memFile); err != nil {
+			log.Fatal("could not write memory profile: ", err)
+		}
+	}
+
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM) // subscribe to system signals
+	onKill := func(c chan os.Signal, cpuFile *os.File, memFile *os.File) {
+		select {
+		case <-c:
+			if *cpuprofile != "" {
+				defer cpuFile.Close()
+				defer pprof.StopCPUProfile()
+			}
+			if *memprofile != "" {
+				defer memFile.Close()
+			}
+			defer os.Exit(0)
+		}
 	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", &helloHandler{})
 	mux.Handle("/health", &healthHandler{})
 
-	http.ListenAndServe(fmt.Sprintf(":%d", *addrFlag), mux)
+	go onKill(c, cpuFile, memFile)
 
-	// Below added to enable memory profiling
-	if *memprofile != "" {
-		f, err := os.Create(*memprofile)
-		if err != nil {
-			log.Fatal("could not create memory profile: ", err)
-		}
-		defer f.Close() // error handling omitted for example
-		runtime.GC()    // get up-to-date statistics
-		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Fatal("could not write memory profile: ", err)
-		}
-	}
+	fmt.Println("I've made it here")
+	http.ListenAndServe(fmt.Sprintf(":%d", *addrFlag), mux)
 }

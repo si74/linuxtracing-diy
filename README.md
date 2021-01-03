@@ -29,15 +29,26 @@ Go has a variety of profiling tools - helping for analyzing cpu and memory usage
 
 [Here](https://godoc.org/runtime/pprof) is the godoc page on the pprof package and [here](https://blog.golang.org/pprof) is a blog post on how to use it.
 
-To trace CPU usage:
-```
-```
+1. Install graphviz needed for visualization `brew install graphviz`
+2. Configure application for profiling (see `/testserver/main.go`).
+3. To trace CPU usage and memory:
+  ```
+  $ ./testserver -cpuprofile=cpu.prof -memprofile=mem.prof
+  $ go tool memprof.prof
+  $ (pprof) web
+  ```
 
-To trace memory:
+  This will create an svg image that will hopefully open in your browser. If not, copy the path to the link and enter it in chrome i.e. `/private/var/folders/py/yjj2q4_n2hg6c7qvhhzp96jw0000gn/T/pprof002.svg`.
 
-Add
-```
-```
+### Interpreting CPU Profile Web Viz
+
+Note that CPU tracing requires the program to run a bit longer and requires more sampling. I've been struggling to get CPU profiling working so TBD...
+
+TODO(sneha): Consider comments from this stack overflow [question](https://stackoverflow.com/questions/30871691/cant-get-golang-pprof-working).
+
+### Interpreting Mem Profile Web Viz
+
+TBD.
 
 ## 3. Linux Utilities for tracing
 
