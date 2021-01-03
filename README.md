@@ -10,15 +10,40 @@ I want to write a very simple socket server or layer 7 http server and a testing
 
 Just going to jot down more notes here as I go along!
 
-## Go Tooling
+## Building/Running the Service
 
-TBD.
+Building for linux:
+`GOOS=linux go build -o testserver main.go`
 
-## Linux Utilities
+## 1. Logging, Distributed Tracing, Metrics
+
+So something which is out of the context of this README are are the three pillars of observability. In analyzing a piece of software, I'd probably first instrument the damn thing with metrics, tracing, and logs. There are a ton of blog posts about this as well as several chapters of the google SRE book on this topic. Essentially the tl:dr; of it is:
+
+- I use distributed tracing to dive into latency as requests pass between microservices and function calls within services themselves.
+- Metrics can be used for a ton of things - request rate, error rate, request latency distribution, # of active connections, etc.
+- I use logs to dig into insidious errors and needle-in-the-haystack bugs. (Also if i'm too lazy to automate some kind of mitigation, I set up a log and log-based alert for it all the time.)
+
+## 2. Go Tooling - cpu and memory profiling
+
+Go has a variety of profiling tools - helping for analyzing cpu and memory usage *within* your program itself. Luckily there is a pprof tool useful for this very thing.
+
+[Here](https://godoc.org/runtime/pprof) is the godoc page on the pprof package and [here](https://blog.golang.org/pprof) is a blog post on how to use it.
+
+To trace CPU usage:
+```
+```
+
+To trace memory:
+
+Add
+```
+```
+
+## 3. Linux Utilities for tracing
 
 Brendan Gregg's notes on the suite of Linux tracing tools is available [here](http://www.brendangregg.com/blog/2015-07-08/choosing-a-linux-tracer.html).
 
-### Using strace
+### Using strace - system calls
 
 What is strace? A tracing utility used to trace system calls. Note, strace is eff'ing slow and that is fully detailed in this (post)[http://www.brendangregg.com/blog/2014-05-11/strace-wow-much-syscall.html].
 
